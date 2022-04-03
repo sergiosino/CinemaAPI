@@ -19,8 +19,13 @@ namespace CinemaAPI.Controllers
 
         [Authorize]
         [HttpGet("[action]")]
-        public IActionResult AllMovies()
+        public IActionResult AllMovies(string? sort, int pageNumber, int pageSize)
         {
+            if(pageNumber <= 0 || pageSize <= 0)
+            {
+                return StatusCode(StatusCodes.Status422UnprocessableEntity, "The params pageNumber and pageSize are mandatory");
+            }
+
             var movies = _dbContext.Movies.Select(m => new
             { 
                 Id = m.Id,
@@ -32,7 +37,15 @@ namespace CinemaAPI.Controllers
                 ImageUrl = m.ImageUrl
             });
 
-            return StatusCode(StatusCodes.Status200OK, movies);
+            switch (sort)
+            {
+                case "desc":
+                    return StatusCode(StatusCodes.Status200OK, movies.OrderByDescending(m => m.Rating).Skip((pageNumber - 1) * pageSize).Take(pageSize));
+                case "asc":
+                    return StatusCode(StatusCodes.Status200OK, movies.OrderBy(m => m.Rating).Skip((pageNumber - 1) * pageSize).Take(pageSize));
+                default:
+                    return StatusCode(StatusCodes.Status200OK, movies.Skip((pageNumber - 1) * pageSize).Take(pageSize));
+            }
         }
 
         [Authorize]
@@ -49,6 +62,20 @@ namespace CinemaAPI.Controllers
             {
                 return StatusCode(StatusCodes.Status200OK, movie);
             }
+        }
+
+        [Authorize]
+        [HttpGet("[action]")]
+        public IActionResult FindMovies(string movieName)
+        {
+            var movies = _dbContext.Movies.Where(m => m.Name.Contains(movieName)).Select(m => new
+            {
+                Id = m.Id,
+                Name = m.Name,
+                ImageUrl = m.ImageUrl
+            });
+
+            return StatusCode(StatusCodes.Status200OK, movies);
         }
 
         [Authorize(Roles = "Admin")]
