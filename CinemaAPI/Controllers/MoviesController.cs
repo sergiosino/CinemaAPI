@@ -12,9 +12,9 @@ namespace CinemaAPI.Controllers
     {
         private CinemaDbContext _dbContext;
 
-        public MoviesController(CinemaDbContext cinemaDbContext)
+        public MoviesController(CinemaDbContext dbContext)
         {
-            _dbContext = cinemaDbContext;
+            _dbContext = dbContext;
         }
 
         [Authorize]
