@@ -4,6 +4,11 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 
+if (!Directory.Exists("wwwroot"))
+{
+    Directory.CreateDirectory("wwwroot");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
