@@ -3,6 +3,8 @@ using CinemaAPI.Data;
 using CinemaAPI.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace CinemaAPI.Controllers
 {
@@ -11,16 +13,20 @@ namespace CinemaAPI.Controllers
     public class UsersController : ControllerBase
     {
         private CinemaDbContext _dbContext;
+        private IConfiguration _configuration;
+        private readonly AuthService _auth;
 
-        public UsersController(CinemaDbContext dbContext)
+        public UsersController(CinemaDbContext dbContext, IConfiguration configuration)
         {
             _dbContext = dbContext;
+            _configuration = configuration;
+            _auth = new AuthService(_configuration);
         }
 
         [HttpPost]
         public IActionResult Register([FromBody] User user)
         {
-            User userWithSameEmail = _dbContext.Users.Where(u => u.Email == user.Email).FirstOrDefault();
+            var userWithSameEmail = _dbContext.Users.Where(u => u.Email == user.Email).FirstOrDefault();
 
             if(userWithSameEmail != null)
             {
@@ -39,5 +45,39 @@ namespace CinemaAPI.Controllers
 
             return StatusCode(StatusCodes.Status201Created);
         }
+
+        [HttpPost]
+        public IActionResult Login([FromBody] User user)
+        {
+            var userObj = _dbContext.Users.FirstOrDefault(u => u.Email == user.Email);
+
+            if(userObj == null)
+            {
+                return StatusCode(StatusCodes.Status404NotFound);
+            }
+            if(!SecurePasswordHasherHelper.Verify(user.Password, userObj.Password))
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, userObj.Role),
+            };
+            var token = _auth.GenerateAccessToken(claims);
+
+            return new ObjectResult(new
+            {
+                access_token = token.AccessToken,
+                expires_in = token.ExpiresIn,
+                token_type = token.TokenType,
+                creation_Time = token.ValidFrom,
+                expiration_Time = token.ValidTo,
+                user_id = userObj.Id
+            });
+        }
+
     }
 }
